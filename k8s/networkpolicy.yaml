@@ -1,0 +1,62 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: feedback-api-netpol
+  namespace: feedback-system
+spec:
+  podSelector:
+    matchLabels:
+      app: feedback-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow traffic from prometheus
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow connection to PostgreSQL
+  - to:
+    - podSelector:
+        matchLabels:
+          cnpg.io/cluster: feedback-postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow connection to Keycloak
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: auth-system
+    ports:
+    - protocol: TCP
+      port: 8080
+  # Allow HTTPS to external services (webhooks, etc.)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 80

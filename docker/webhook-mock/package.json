@@ -1,0 +1,12 @@
+{
+  "name": "webhook-mock",
+  "version": "1.0.0",
+  "description": "Visual webhook receiver for feedback API",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

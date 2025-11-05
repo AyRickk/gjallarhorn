@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: feedback-api-config
+  namespace: feedback-system
+data:
+  HOST: "0.0.0.0"
+  PORT: "8080"
+  KEYCLOAK_REALM: "master"
+  KEYCLOAK_JWKS_CACHE_TTL: "3600"
+  EXPORT_MAX_RECORDS: "10000"
+  RUST_LOG: "info,feedback_api=debug"
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: feedback-api-secret
+  namespace: feedback-system
+type: Opaque
+stringData:
+  # Database connection - will be auto-constructed from CNPG cluster
+  DATABASE_URL: "postgresql://feedback_user:CHANGE_ME_IN_PRODUCTION@feedback-postgres-rw:5432/feedback_db"
+
+  # Keycloak URL - adjust to your keycloak service
+  KEYCLOAK_URL: "http://keycloak.auth-system.svc.cluster.local:8080/realms/master"
+
+  # Webhook URLs (comma-separated) - adjust to your webhook endpoints
+  WEBHOOK_URLS: "http://webhook-service.feedback-system.svc.cluster.local/webhook"

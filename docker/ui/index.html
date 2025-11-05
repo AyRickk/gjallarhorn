@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback API Test Console</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .auth-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .auth-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .status-connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-disconnected {
+            background: #f44336;
+            color: white;
+        }
+
+        .auth-form {
+            display: flex;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .panel-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.9em;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .feedback-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .feedback-item {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .feedback-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .service-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .type-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 15px;
+            font-size: 0.85em;
+            margin-left: 5px;
+        }
+
+        .feedback-time {
+            color: #999;
+            font-size: 0.85em;
+        }
+
+        .feedback-content {
+            margin-top: 10px;
+        }
+
+        .rating-stars {
+            color: #FFA500;
+            font-size: 1.2em;
+        }
+
+        .thumbs-icon {
+            font-size: 1.5em;
+        }
+
+        .thumbs-up {
+            color: #4CAF50;
+        }
+
+        .thumbs-down {
+            color: #f44336;
+        }
+
+        .comment-text {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+            font-style: italic;
+            color: #555;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .json-viewer {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .context-editor {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .tab-container {
+            margin-bottom: 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+            background: transparent;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Feedback API Test Console</h1>
+            <p class="subtitle">Interface de test complète pour l'API de feedback</p>
+        </header>
+
+        <!-- Authentication Section -->
+        <div class="auth-section">
+            <div class="auth-status">
+                <div>
+                    <span id="authStatus" class="status-badge status-disconnected">Non connecté</span>
+                    <span id="userInfo" style="margin-left: 10px; color: #666;"></span>
+                </div>
+                <div class="auth-form">
+                    <input type="text" id="username" placeholder="Username (admin)" value="admin">
+                    <input type="password" id="password" placeholder="Password (admin)" value="admin">
+                    <button onclick="login()">Se connecter</button>
+                    <button onclick="logout()" class="btn-secondary">Déconnexion</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div id="statsContainer" class="stats-grid" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-number" id="totalCount">0</div>
+                <div class="stat-label">Total Feedbacks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="avgRating">-</div>
+                <div class="stat-label">Note Moyenne</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="thumbsUpCount">0</div>
+                <div class="stat-label">Thumbs Up</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="commentsCount">0</div>
+                <div class="stat-label">Commentaires</div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Left Panel: Create Feedback -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">✍️ Créer un Feedback</h2>
+                </div>
+
+                <div id="createAlert"></div>
+
+                <div class="form-group">
+                    <label for="createService">Service *</label>
+                    <select id="createService">
+                        <option value="visio">Visio Conférence</option>
+                        <option value="chatbot">Chatbot IA</option>
+                        <option value="console">Console</option>
+                        <option value="other">Autre...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="feedbackType">Type de Feedback *</label>
+                    <select id="feedbackType" onchange="updateFeedbackForm()">
+                        <option value="rating">Rating (1-5)</option>
+                        <option value="thumbs">Thumbs (Up/Down)</option>
+                        <option value="nps">NPS (0-10)</option>
+                        <option value="comment">Commentaire</option>
+                    </select>
+                </div>
+
+                <div id="ratingField" class="form-group">
+                    <label for="rating">Note (1-5) *</label>
+                    <input type="number" id="rating" min="1" max="5" value="5">
+                </div>
+
+                <div id="npsField" class="form-group" style="display: none;">
+                    <label for="nps">Score NPS (0-10) *</label>
+                    <input type="number" id="nps" min="0" max="10" value="9">
+                </div>
+
+                <div id="thumbsField" class="form-group" style="display: none;">
+                    <label>Thumbs *</label>
+                    <div class="action-buttons">
+                        <button onclick="setThumbsUp(true)" class="btn-success">👍 Thumbs Up</button>
+                        <button onclick="setThumbsUp(false)" class="btn-danger">👎 Thumbs Down</button>
+                    </div>
+                    <input type="hidden" id="thumbsUp">
+                </div>
+
+                <div class="form-group">
+                    <label for="comment">Commentaire (optionnel)</label>
+                    <textarea id="comment" placeholder="Ajoutez un commentaire..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="context">Contexte JSON (optionnel)</label>
+                    <textarea id="context" class="context-editor" placeholder='{"call_id": "123", "duration": 1800}'></textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button onclick="createFeedback()">🚀 Envoyer le Feedback</button>
+                    <button onclick="resetForm()" class="btn-secondary">🔄 Réinitialiser</button>
+                </div>
+            </div>
+
+            <!-- Right Panel: View Feedbacks -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📋 Feedbacks</h2>
+                    <button onclick="loadFeedbacks()" class="btn-small">🔄 Rafraîchir</button>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters">
+                    <div class="form-group">
+                        <label for="filterService">Service</label>
+                        <select id="filterService" onchange="loadFeedbacks()">
+                            <option value="">Tous</option>
+                            <option value="visio">Visio</option>
+                            <option value="chatbot">Chatbot</option>
+                            <option value="console">Console</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filterType">Type</label>
+                        <select id="filterType" onchange="loadFeedbacks()">
+                            <option value="">Tous</option>
+                            <option value="rating">Rating</option>
+                            <option value="thumbs">Thumbs</option>
+                            <option value="nps">NPS</option>
+                            <option value="comment">Comment</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="filterLimit">Limite</label>
+                        <select id="filterLimit" onchange="loadFeedbacks()">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tab-container">
+                    <div class="tabs">
+                        <button class="tab active" onclick="switchTab('list')">📋 Liste</button>
+                        <button class="tab" onclick="switchTab('stats')">📊 Statistiques</button>
+                        <button class="tab" onclick="switchTab('export')">📤 Export</button>
+                    </div>
+
+                    <!-- List Tab -->
+                    <div id="listTab" class="tab-content active">
+                        <div id="feedbacksList" class="feedback-list">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📭</div>
+                                <p>Aucun feedback pour le moment</p>
+                                <p style="font-size: 0.9em; margin-top: 10px;">Connectez-vous et créez votre premier feedback !</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Tab -->
+                    <div id="statsTab" class="tab-content">
+                        <div id="detailedStats"></div>
+                    </div>
+
+                    <!-- Export Tab -->
+                    <div id="exportTab" class="tab-content">
+                        <div class="form-group">
+                            <label>Format d'export</label>
+                            <div class="action-buttons">
+                                <button onclick="exportFeedbacks('json')" class="btn-success">📥 Export JSON</button>
+                                <button onclick="exportFeedbacks('csv')" class="btn-success">📥 Export CSV</button>
+                            </div>
+                        </div>
+                        <div id="exportResult"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8080';
+        const KEYCLOAK_URL = 'http://localhost:8180';
+        let token = null;
+        let userInfo = null;
+
+        // Authentication
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Authentication failed' }));
+                    throw new Error(errorData.error || 'Authentication failed');
+                }
+
+                const data = await response.json();
+                token = data.access_token;
+
+                // Decode JWT to get user info
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                userInfo = {
+                    sub: payload.sub,
+                    username: payload.preferred_username,
+                    email: payload.email
+                };
+
+                updateAuthUI(true);
+                showAlert('createAlert', 'Connexion réussie !', 'success');
+
+                // Load data
+                loadFeedbacks();
+                loadStats();
+            } catch (error) {
+                showAlert('createAlert', 'Erreur de connexion : ' + error.message, 'error');
+            }
+        }
+
+        function logout() {
+            token = null;
+            userInfo = null;
+            updateAuthUI(false);
+            document.getElementById('feedbacksList').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔒</div><p>Connectez-vous pour voir les feedbacks</p></div>';
+            document.getElementById('statsContainer').style.display = 'none';
+        }
+
+        function updateAuthUI(connected) {
+            const statusBadge = document.getElementById('authStatus');
+            const userInfoEl = document.getElementById('userInfo');
+
+            if (connected) {
+                statusBadge.className = 'status-badge status-connected';
+                statusBadge.textContent = '✓ Connecté';
+                userInfoEl.textContent = `Bienvenue, ${userInfo.username}`;
+                document.getElementById('statsContainer').style.display = 'grid';
+            } else {
+                statusBadge.className = 'status-badge status-disconnected';
+                statusBadge.textContent = 'Non connecté';
+                userInfoEl.textContent = '';
+            }
+        }
+
+        // Feedback form management
+        function updateFeedbackForm() {
+            const type = document.getElementById('feedbackType').value;
+
+            document.getElementById('ratingField').style.display = type === 'rating' ? 'block' : 'none';
+            document.getElementById('npsField').style.display = type === 'nps' ? 'block' : 'none';
+            document.getElementById('thumbsField').style.display = type === 'thumbs' ? 'block' : 'none';
+        }
+
+        function setThumbsUp(value) {
+            document.getElementById('thumbsUp').value = value;
+            showAlert('createAlert', value ? '👍 Thumbs Up sélectionné' : '👎 Thumbs Down sélectionné', 'info');
+        }
+
+        function resetForm() {
+            document.getElementById('createService').value = 'visio';
+            document.getElementById('feedbackType').value = 'rating';
+            document.getElementById('rating').value = '5';
+            document.getElementById('nps').value = '9';
+            document.getElementById('thumbsUp').value = '';
+            document.getElementById('comment').value = '';
+            document.getElementById('context').value = '';
+            updateFeedbackForm();
+            document.getElementById('createAlert').innerHTML = '';
+        }
+
+        // Create feedback
+        async function createFeedback() {
+            if (!token) {
+                showAlert('createAlert', 'Vous devez être connecté pour créer un feedback', 'error');
+                return;
+            }
+
+            const service = document.getElementById('createService').value;
+            const type = document.getElementById('feedbackType').value;
+            const comment = document.getElementById('comment').value || null;
+            const contextStr = document.getElementById('context').value;
+
+            let payload = {
+                service: service,
+                feedback_type: type,
+                comment: comment
+            };
+
+            // Add type-specific fields
+            if (type === 'rating') {
+                payload.rating = parseInt(document.getElementById('rating').value);
+            } else if (type === 'nps') {
+                payload.rating = parseInt(document.getElementById('nps').value);
+            } else if (type === 'thumbs') {
+                const thumbsValue = document.getElementById('thumbsUp').value;
+                if (thumbsValue === '') {
+                    showAlert('createAlert', 'Veuillez sélectionner Thumbs Up ou Thumbs Down', 'error');
+                    return;
+                }
+                payload.thumbs_up = thumbsValue === 'true';
+            }
+
+            // Add context if provided
+            if (contextStr) {
+                try {
+                    payload.context = JSON.parse(contextStr);
+                } catch (e) {
+                    showAlert('createAlert', 'Le contexte JSON est invalide', 'error');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/feedbacks`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to create feedback');
+                }
+
+                const result = await response.json();
+                showAlert('createAlert', '✅ Feedback créé avec succès ! ID: ' + result.id, 'success');
+                resetForm();
+                loadFeedbacks();
+                loadStats();
+            } catch (error) {
+                showAlert('createAlert', 'Erreur : ' + error.message, 'error');
+            }
+        }
+
+        // Load feedbacks
+        async function loadFeedbacks() {
+            if (!token) return;
+
+            const service = document.getElementById('filterService').value;
+            const type = document.getElementById('filterType').value;
+            const limit = document.getElementById('filterLimit').value;
+
+            let url = `${API_URL}/api/v1/feedbacks?limit=${limit}`;
+            if (service) url += `&service=${service}`;
+            if (type) url += `&feedback_type=${type}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load feedbacks');
+
+                const feedbacks = await response.json();
+                displayFeedbacks(feedbacks);
+            } catch (error) {
+                document.getElementById('feedbacksList').innerHTML = `<div class="alert alert-error">Erreur : ${error.message}</div>`;
+            }
+        }
+
+        function displayFeedbacks(feedbacks) {
+            const container = document.getElementById('feedbacksList');
+
+            if (feedbacks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>Aucun feedback trouvé avec ces filtres</p></div>';
+                return;
+            }
+
+            container.innerHTML = feedbacks.map(fb => {
+                let contentHtml = '';
+
+                if (fb.rating !== null) {
+                    const stars = '⭐'.repeat(Math.min(fb.rating, 5));
+                    const maxStars = fb.feedback_type === 'nps' ? 10 : 5;
+                    contentHtml = `<div class="rating-stars">${stars} (${fb.rating}/${maxStars})</div>`;
+                }
+
+                if (fb.thumbs_up !== null) {
+                    contentHtml = fb.thumbs_up
+                        ? '<div class="thumbs-icon thumbs-up">👍 Thumbs Up</div>'
+                        : '<div class="thumbs-icon thumbs-down">👎 Thumbs Down</div>';
+                }
+
+                const commentHtml = fb.comment
+                    ? `<div class="comment-text">💬 "${fb.comment}"</div>`
+                    : '';
+
+                const contextHtml = fb.context
+                    ? `<div class="comment-text">📋 Context: ${JSON.stringify(fb.context)}</div>`
+                    : '';
+
+                return `
+                    <div class="feedback-item">
+                        <div class="feedback-header">
+                            <div>
+                                <span class="service-tag">${fb.service}</span>
+                                <span class="type-tag">${fb.feedback_type}</span>
+                            </div>
+                            <div class="feedback-time">${new Date(fb.created_at).toLocaleString('fr-FR')}</div>
+                        </div>
+                        <div class="feedback-content">
+                            ${contentHtml}
+                            ${commentHtml}
+                            ${contextHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Load stats
+        async function loadStats() {
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_URL}/api/v1/feedbacks/stats`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load stats');
+
+                const stats = await response.json();
+                displayStats(stats);
+            } catch (error) {
+                console.error('Stats error:', error);
+            }
+        }
+
+        function displayStats(stats) {
+            // Update top stats
+            let totalCount = 0;
+            let totalRating = 0;
+            let ratingCount = 0;
+            let thumbsUpCount = 0;
+            let commentsCount = 0;
+
+            stats.forEach(stat => {
+                totalCount += stat.total_count;
+                if (stat.rating_avg !== null) {
+                    totalRating += stat.rating_avg * stat.total_count;
+                    ratingCount += stat.total_count;
+                }
+                thumbsUpCount += stat.thumbs_up_count;
+                commentsCount += stat.comment_count;
+            });
+
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('avgRating').textContent = ratingCount > 0
+                ? (totalRating / ratingCount).toFixed(1)
+                : '-';
+            document.getElementById('thumbsUpCount').textContent = thumbsUpCount;
+            document.getElementById('commentsCount').textContent = commentsCount;
+
+            // Update detailed stats
+            const detailedContainer = document.getElementById('detailedStats');
+            if (stats.length === 0) {
+                detailedContainer.innerHTML = '<div class="empty-state"><p>Aucune statistique disponible</p></div>';
+                return;
+            }
+
+            detailedContainer.innerHTML = stats.map(stat => `
+                <div class="feedback-item" style="margin-bottom: 15px;">
+                    <div class="feedback-header">
+                        <span class="service-tag">${stat.service}</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px;">
+                        <div><strong>Total:</strong> ${stat.total_count}</div>
+                        <div><strong>Note moy:</strong> ${stat.rating_avg ? stat.rating_avg.toFixed(2) : 'N/A'}</div>
+                        <div><strong>👍:</strong> ${stat.thumbs_up_count}</div>
+                        <div><strong>👎:</strong> ${stat.thumbs_down_count}</div>
+                        <div><strong>Ratio 👍:</strong> ${stat.thumbs_up_ratio ? (stat.thumbs_up_ratio * 100).toFixed(1) + '%' : 'N/A'}</div>
+                        <div><strong>💬:</strong> ${stat.comment_count}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Export
+        async function exportFeedbacks(format) {
+            if (!token) {
+                document.getElementById('exportResult').innerHTML = '<div class="alert alert-error">Vous devez être connecté</div>';
+                return;
+            }
+
+            const service = document.getElementById('filterService').value;
+            let url = `${API_URL}/api/v1/feedbacks/export?format=${format}`;
+            if (service) url += `&service=${service}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Export failed');
+
+                const data = await response.text();
+
+                // Create download
+                const blob = new Blob([data], { type: format === 'json' ? 'application/json' : 'text/csv' });
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = `feedbacks_${new Date().toISOString()}.${format}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+
+                document.getElementById('exportResult').innerHTML = `<div class="alert alert-success">✅ Export ${format.toUpperCase()} réussi !</div>`;
+
+                // Show preview
+                if (format === 'json') {
+                    const preview = data.substring(0, 500) + (data.length > 500 ? '...' : '');
+                    document.getElementById('exportResult').innerHTML += `<div class="json-viewer">${preview}</div>`;
+                }
+            } catch (error) {
+                document.getElementById('exportResult').innerHTML = `<div class="alert alert-error">Erreur : ${error.message}</div>`;
+            }
+        }
+
+        // Tab management
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // Load data if needed
+            if (tabName === 'stats') {
+                loadStats();
+            }
+        }
+
+        // Helper function
+        function showAlert(containerId, message, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+
+        // Initialize
+        updateFeedbackForm();
+    </script>
+</body>
+</html>

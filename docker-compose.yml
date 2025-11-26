@@ -55,6 +55,8 @@ services:
       KEYCLOAK_URL: http://keycloak:8180/realms/master
       KEYCLOAK_REALM: master
       WEBHOOK_URLS: http://webhook-mock:8081/webhook
+      # CORS Configuration - Set allowed origins (comma-separated)
+      ALLOWED_ORIGINS: http://localhost:3001,http://localhost:8082,http://localhost:3000
       RUST_LOG: info,feedback_api=debug
     ports:
       - "8080:8080"

@@ -102,39 +102,61 @@ pub fn gather_metrics() -> Result<String, Box<dyn std::error::Error>> {
 }
 
 pub async fn initialize_metrics_from_db(db: &crate::db::Database) -> anyhow::Result<()> {
-    use crate::models::FeedbackQuery;
+    // Fetch aggregated metrics from database instead of loading all feedbacks
+    let aggregates = db.get_metrics_aggregates().await?;
 
-    // Fetch all feedbacks from database
-    let feedbacks = db.query_feedbacks(FeedbackQuery {
-        service: None,
-        feedback_type: None,
-        user_id: None,
-        from_date: None,
-        to_date: None,
-        limit: None,
-        offset: None,
-    }).await?;
+    let aggregate_count = aggregates.len();
+    let mut total_feedbacks = 0i64;
 
-    // Replay all feedbacks to metrics
-    for feedback in feedbacks {
-        record_feedback(
-            &feedback.service,
-            &format!("{:?}", feedback.feedback_type),
-            feedback.rating,
-            feedback.thumbs_up,
-            feedback.comment.is_some(),
-        );
+    // Initialize metrics from aggregated data
+    for agg in aggregates {
+        let feedback_type_str = format!("{:?}", agg.feedback_type);
+
+        // Set feedback counter
+        FEEDBACK_COUNTER
+            .with_label_values(&[&agg.service, &feedback_type_str])
+            .inc_by(agg.total_count as f64);
+
+        // Set rating histogram with individual observations from sum
+        // Note: We can't restore exact individual ratings, but we can observe the average
+        if let Some(rating_sum) = agg.rating_sum {
+            if agg.total_count > 0 {
+                let avg_rating = rating_sum / agg.total_count as f64;
+                // Observe the average rating for each count
+                // This approximates the distribution
+                for _ in 0..agg.total_count {
+                    FEEDBACK_RATING
+                        .with_label_values(&[&agg.service])
+                        .observe(avg_rating);
+                }
+            }
+        }
+
+        // Set thumbs counters
+        if agg.thumbs_up_count > 0 {
+            FEEDBACK_THUMBS_UP
+                .with_label_values(&[&agg.service])
+                .inc_by(agg.thumbs_up_count as f64);
+        }
+
+        if agg.thumbs_down_count > 0 {
+            FEEDBACK_THUMBS_DOWN
+                .with_label_values(&[&agg.service])
+                .inc_by(agg.thumbs_down_count as f64);
+        }
+
+        // Set comments counter
+        if agg.comment_count > 0 {
+            FEEDBACK_COMMENTS
+                .with_label_values(&[&agg.service])
+                .inc_by(agg.comment_count as f64);
+        }
+
+        total_feedbacks += agg.total_count;
     }
 
-    tracing::info!("Metrics initialized from database with {} feedbacks", db.query_feedbacks(FeedbackQuery {
-        service: None,
-        feedback_type: None,
-        user_id: None,
-        from_date: None,
-        to_date: None,
-        limit: None,
-        offset: None,
-    }).await?.len());
+    tracing::info!("Metrics initialized from database aggregates ({} total feedbacks across {} service/type combinations)",
+        total_feedbacks, aggregate_count);
 
     Ok(())
 }

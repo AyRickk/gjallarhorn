@@ -1,5 +1,5 @@
 use crate::error::{AppError, Result};
-use crate::models::{FeedbackSubmission, FeedbackType};
+use crate::models::{FeedbackQuery, FeedbackSubmission, FeedbackType};
 
 pub trait Validate {
     fn validate(&self) -> Result<()>;
@@ -69,6 +69,53 @@ impl Validate for FeedbackSubmission {
             if comment.len() > 5000 {
                 return Err(AppError::ValidationError(
                     "Comment too long (max 5000 characters)".to_string(),
+                ));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Validate for FeedbackQuery {
+    fn validate(&self) -> Result<()> {
+        // Validate limit
+        if let Some(limit) = self.limit {
+            if limit < 1 || limit > 1000 {
+                return Err(AppError::ValidationError(
+                    "limit must be between 1 and 1000".to_string(),
+                ));
+            }
+        }
+
+        // Validate offset
+        if let Some(offset) = self.offset {
+            if offset < 0 {
+                return Err(AppError::ValidationError(
+                    "offset must be >= 0".to_string(),
+                ));
+            }
+        }
+
+        // Validate date range
+        if let (Some(from), Some(to)) = (self.from_date, self.to_date) {
+            if from > to {
+                return Err(AppError::ValidationError(
+                    "from_date must be before to_date".to_string(),
+                ));
+            }
+        }
+
+        // Validate service name length if present
+        if let Some(service) = &self.service {
+            if service.is_empty() {
+                return Err(AppError::ValidationError(
+                    "service name cannot be empty".to_string(),
+                ));
+            }
+            if service.len() > 100 {
+                return Err(AppError::ValidationError(
+                    "service name too long (max 100 characters)".to_string(),
                 ));
             }
         }

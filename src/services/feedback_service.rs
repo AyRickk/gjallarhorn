@@ -13,6 +13,10 @@ impl FeedbackService {
         Self { db }
     }
 
+    pub fn db(&self) -> &Database {
+        &self.db
+    }
+
     pub async fn create_feedback(
         &self,
         user_id: &str,

@@ -63,8 +63,17 @@ pub async fn get_feedback(
 // GET /api/v1/feedbacks - Query feedbacks
 pub async fn query_feedbacks(
     State(state): State<AppState>,
-    Query(query): Query<FeedbackQuery>,
+    Query(mut query): Query<FeedbackQuery>,
 ) -> Result<Json<Vec<FeedbackResponse>>> {
+    // Validate query parameters
+    use crate::validation::Validate;
+    query.validate()?;
+
+    // Apply default limit if not specified
+    if query.limit.is_none() {
+        query.limit = Some(100);
+    }
+
     let feedbacks = state.service.query_feedbacks(query).await?;
     let responses: Vec<FeedbackResponse> = feedbacks.into_iter().map(Into::into).collect();
     Ok(Json(responses))
@@ -126,11 +135,34 @@ pub async fn metrics_handler() -> Result<Response> {
 }
 
 // GET /health - Health check endpoint
-pub async fn health_check() -> impl IntoResponse {
-    Json(serde_json::json!({
-        "status": "healthy",
-        "service": "feedback-api"
-    }))
+pub async fn health_check(
+    State(state): State<AppState>,
+) -> Result<Response> {
+    use serde_json::json;
+
+    // Check database connection
+    let db_healthy = state.service.db().health_check().await.is_ok();
+
+    if !db_healthy {
+        tracing::warn!("Health check failed: database is unhealthy");
+    }
+
+    let overall_status = if db_healthy { "healthy" } else { "unhealthy" };
+    let status_code = if db_healthy {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+
+    let response = json!({
+        "status": overall_status,
+        "service": "feedback-api",
+        "checks": {
+            "database": if db_healthy { "healthy" } else { "unhealthy" }
+        }
+    });
+
+    Ok((status_code, Json(response)).into_response())
 }
 
 // Authentication structures

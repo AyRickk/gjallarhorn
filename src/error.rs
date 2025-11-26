@@ -26,10 +26,16 @@ impl IntoResponse for AppError {
         let (status, error_message, details) = match self {
             AppError::DatabaseError(err) => {
                 tracing::error!("Database error: {:?}", err);
+                // Only expose detailed errors in debug mode (development)
+                let details = if cfg!(debug_assertions) {
+                    Some(err.to_string())
+                } else {
+                    None // Hide database details in production
+                };
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Database error occurred".to_string(),
-                    Some(err.to_string()),
+                    details,
                 )
             }
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg, None),
@@ -37,10 +43,16 @@ impl IntoResponse for AppError {
             AppError::AuthenticationError(msg) => (StatusCode::UNAUTHORIZED, msg, None),
             AppError::InternalError(msg) => {
                 tracing::error!("Internal error: {}", msg);
+                // Only expose detailed errors in debug mode (development)
+                let details = if cfg!(debug_assertions) {
+                    Some(msg)
+                } else {
+                    None // Hide internal error details in production
+                };
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal server error".to_string(),
-                    Some(msg),
+                    details,
                 )
             }
         };

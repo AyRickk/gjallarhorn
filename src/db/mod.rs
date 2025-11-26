@@ -1,4 +1,4 @@
-use crate::models::{Feedback, FeedbackQuery, FeedbackStats, FeedbackSubmission};
+use crate::models::{Feedback, FeedbackQuery, FeedbackStats, FeedbackSubmission, MetricsAggregate};
 use anyhow::{Context, Result};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
@@ -201,6 +201,36 @@ impl Database {
             .execute(&self.pool)
             .await
             .context("Failed to refresh stats")?;
+        Ok(())
+    }
+
+    pub async fn get_metrics_aggregates(&self) -> Result<Vec<MetricsAggregate>> {
+        let aggregates = sqlx::query_as::<_, MetricsAggregate>(
+            r#"
+            SELECT
+                service,
+                feedback_type,
+                COUNT(*) as total_count,
+                SUM(rating) as rating_sum,
+                COUNT(CASE WHEN thumbs_up = true THEN 1 END)::bigint as thumbs_up_count,
+                COUNT(CASE WHEN thumbs_up = false THEN 1 END)::bigint as thumbs_down_count,
+                COUNT(CASE WHEN comment IS NOT NULL THEN 1 END)::bigint as comment_count
+            FROM feedbacks
+            GROUP BY service, feedback_type
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await
+        .context("Failed to get metrics aggregates")?;
+
+        Ok(aggregates)
+    }
+
+    pub async fn health_check(&self) -> Result<()> {
+        sqlx::query("SELECT 1")
+            .execute(&self.pool)
+            .await
+            .context("Database health check failed")?;
         Ok(())
     }
 }

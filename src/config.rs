@@ -11,6 +11,7 @@ pub struct Config {
     pub keycloak_jwks_cache_ttl: u64,
     pub webhook_urls: Vec<String>,
     pub export_max_records: usize,
+    pub allowed_origins: Vec<String>,
 }
 
 impl Config {
@@ -49,6 +50,13 @@ impl Config {
             .parse()
             .unwrap_or(10000);
 
+        let allowed_origins = std::env::var("ALLOWED_ORIGINS")
+            .unwrap_or_default()
+            .split(',')
+            .filter(|s| !s.trim().is_empty())
+            .map(|s| s.trim().to_string())
+            .collect();
+
         Ok(Config {
             host,
             port,
@@ -58,6 +66,7 @@ impl Config {
             keycloak_jwks_cache_ttl,
             webhook_urls,
             export_max_records,
+            allowed_origins,
         })
     }
 

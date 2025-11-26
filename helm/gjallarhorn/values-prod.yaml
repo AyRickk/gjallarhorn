@@ -1,0 +1,255 @@
+# Production values for Gjallarhorn
+# Override the default values for production deployment
+# Usage: helm install gjallarhorn ./gjallarhorn -f values-prod.yaml
+
+# Production image configuration
+image:
+  repository: your-registry/feedback-api
+  pullPolicy: IfNotPresent
+  tag: "1.0.0"  # Use specific version tags in production
+  # digest: "sha256:..."  # Optionally use digest for immutability
+
+# Production application configuration
+app:
+  logLevel: "info,feedback_api=info"  # Less verbose logging in production
+
+# Production resource limits (higher for production workload)
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "500m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m"
+
+# Production autoscaling (more conservative scaling)
+autoscaling:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 50
+  targetCPUUtilizationPercentage: 60
+  targetMemoryUtilizationPercentage: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600  # Longer stabilization in prod
+      policies:
+      - type: Percent
+        value: 25  # Scale down more conservatively
+        periodSeconds: 120
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 3
+        periodSeconds: 60
+      selectPolicy: Max
+
+# Production PostgreSQL configuration
+postgresql:
+  enabled: true
+  instances: 3  # High availability with 3 instances
+
+  auth:
+    # IMPORTANT: Set these via Sealed Secrets or external secret management
+    password: ""  # Will be injected from external secret manager
+
+  # Production-tuned PostgreSQL parameters
+  parameters:
+    max_connections: "500"
+    shared_buffers: "2GB"
+    effective_cache_size: "6GB"
+    maintenance_work_mem: "512MB"
+    checkpoint_completion_target: "0.9"
+    wal_buffers: "16MB"
+    default_statistics_target: "500"
+    random_page_cost: "1.1"
+    effective_io_concurrency: "200"
+    work_mem: "10485kB"
+    min_wal_size: "2GB"
+    max_wal_size: "8GB"
+    max_worker_processes: "4"
+    max_parallel_workers_per_gather: "2"
+    max_parallel_workers: "4"
+    max_parallel_maintenance_workers: "2"
+
+  # Production storage (larger)
+  storage:
+    size: 100Gi
+    storageClass: "fast-ssd"  # Use high-performance storage class
+    resizeInUseVolumes: true
+
+  # Production resource limits for PostgreSQL
+  resources:
+    requests:
+      memory: "4Gi"
+      cpu: "2000m"
+    limits:
+      memory: "8Gi"
+      cpu: "4000m"
+
+  # Production backup configuration
+  backup:
+    enabled: true
+    destinationPath: "s3://prod-backup-bucket/gjallarhorn-postgres"
+    retentionPolicy: "90d"  # Longer retention for production
+    walCompression: gzip
+    # walEncryption: "AES256"  # Enable encryption for production
+    s3Credentials:
+      enabled: true
+      secretName: postgres-backup-creds
+      accessKeyIdKey: ACCESS_KEY_ID
+      secretAccessKeyKey: ACCESS_SECRET_KEY
+
+  # Enable connection pooler for production
+  pooler:
+    enabled: true
+    instances: 3
+    type: rw
+    poolMode: transaction
+    parameters:
+      max_client_conn: "2000"
+      default_pool_size: "50"
+
+  # Production PostgreSQL affinity (spread across nodes)
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+          - key: cnpg.io/cluster
+            operator: In
+            values:
+            - gjallarhorn-postgres
+        topologyKey: kubernetes.io/hostname
+
+# Production ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"  # Higher rate limit for production
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/enable-cors: "false"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+  hosts:
+    - host: api.gjallarhorn.io  # Production domain
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - api.gjallarhorn.io
+      secretName: gjallarhorn-api-tls
+
+# Production pod configuration
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+# Production affinity (spread pods across nodes and zones)
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - gjallarhorn
+        topologyKey: kubernetes.io/hostname
+    - weight: 50
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - gjallarhorn
+        topologyKey: topology.kubernetes.io/zone
+
+# Production topology spread constraints (even distribution)
+topologySpreadConstraints:
+- maxSkew: 1
+  topologyKey: topology.kubernetes.io/zone
+  whenUnsatisfiable: DoNotSchedule
+  labelSelector:
+    matchLabels:
+      app.kubernetes.io/name: gjallarhorn
+- maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: ScheduleAnyway
+  labelSelector:
+    matchLabels:
+      app.kubernetes.io/name: gjallarhorn
+
+# Production network policy (stricter rules)
+networkPolicy:
+  enabled: true
+  ingress:
+    fromIngressController:
+      enabled: true
+      namespaceSelector:
+        name: ingress-nginx
+    fromPrometheus:
+      enabled: true
+      namespaceSelector:
+        name: monitoring
+  egress:
+    allowDNS: true
+    dnsNamespaceSelector:
+      name: kube-system
+    allowPostgres: true
+    allowKeycloak: true
+    keycloakNamespaceSelector:
+      name: auth-system
+    allowExternal: true  # For webhooks
+
+# Production metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 15s  # More frequent scraping in production
+    scrapeTimeout: 10s
+    labels:
+      release: prometheus  # Match your Prometheus release
+
+# Production probes (faster detection)
+livenessProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+startupProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 0
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 30
+  successThreshold: 1

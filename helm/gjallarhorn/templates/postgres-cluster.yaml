@@ -1,0 +1,133 @@
+{{- if .Values.postgresql.enabled }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ include "gjallarhorn.postgres.name" . }}
+  namespace: {{ include "gjallarhorn.namespace" . }}
+  labels:
+    {{- include "gjallarhorn.labels" . | nindent 4 }}
+spec:
+  instances: {{ .Values.postgresql.instances }}
+  primaryUpdateStrategy: {{ .Values.postgresql.primaryUpdateStrategy }}
+
+  {{- with .Values.postgresql.imageName }}
+  imageName: {{ . }}
+  {{- end }}
+
+  postgresql:
+    parameters:
+      {{- toYaml .Values.postgresql.parameters | nindent 6 }}
+
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgresql.auth.database }}
+      owner: {{ .Values.postgresql.auth.username }}
+      secret:
+        name: {{ include "gjallarhorn.postgres.name" . }}-secret
+      {{- with .Values.postgresql.initdb.postInitSQL }}
+      postInitSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.postgresql.initdb.postInitApplicationSQL }}
+      postInitApplicationSQL:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+  storage:
+    size: {{ .Values.postgresql.storage.size }}
+    {{- if .Values.postgresql.storage.storageClass }}
+    storageClass: {{ .Values.postgresql.storage.storageClass }}
+    {{- end }}
+    {{- with .Values.postgresql.storage.resizeInUseVolumes }}
+    resizeInUseVolumes: {{ . }}
+    {{- end }}
+
+  {{- if .Values.postgresql.resources }}
+  resources:
+    {{- toYaml .Values.postgresql.resources | nindent 4 }}
+  {{- end }}
+
+  {{- if .Values.postgresql.monitoring.enabled }}
+  monitoring:
+    enablePodMonitor: {{ .Values.postgresql.monitoring.enablePodMonitor }}
+    {{- with .Values.postgresql.monitoring.podMonitorMetricRelabelings }}
+    podMonitorMetricRelabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.postgresql.monitoring.podMonitorRelabelings }}
+    podMonitorRelabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .Values.postgresql.backup.enabled }}
+  backup:
+    barmanObjectStore:
+      destinationPath: {{ .Values.postgresql.backup.destinationPath }}
+      {{- if .Values.postgresql.backup.s3Credentials.enabled }}
+      s3Credentials:
+        accessKeyId:
+          name: {{ .Values.postgresql.backup.s3Credentials.secretName }}
+          key: {{ .Values.postgresql.backup.s3Credentials.accessKeyIdKey }}
+        secretAccessKey:
+          name: {{ .Values.postgresql.backup.s3Credentials.secretName }}
+          key: {{ .Values.postgresql.backup.s3Credentials.secretAccessKeyKey }}
+      {{- end }}
+      {{- if .Values.postgresql.backup.azureCredentials.enabled }}
+      azureCredentials:
+        storageAccount:
+          name: {{ .Values.postgresql.backup.azureCredentials.secretName }}
+          key: {{ .Values.postgresql.backup.azureCredentials.storageAccountKey }}
+        storageKey:
+          name: {{ .Values.postgresql.backup.azureCredentials.secretName }}
+          key: {{ .Values.postgresql.backup.azureCredentials.storageKeyKey }}
+      {{- end }}
+      {{- if .Values.postgresql.backup.googleCredentials.enabled }}
+      googleCredentials:
+        applicationCredentials:
+          name: {{ .Values.postgresql.backup.googleCredentials.secretName }}
+          key: {{ .Values.postgresql.backup.googleCredentials.applicationCredentialsKey }}
+      {{- end }}
+      {{- with .Values.postgresql.backup.endpointURL }}
+      endpointURL: {{ . }}
+      {{- end }}
+      wal:
+        compression: {{ .Values.postgresql.backup.walCompression }}
+        {{- with .Values.postgresql.backup.walEncryption }}
+        encryption: {{ . }}
+        {{- end }}
+      {{- with .Values.postgresql.backup.dataCompression }}
+      data:
+        compression: {{ . }}
+      {{- end }}
+    retentionPolicy: {{ .Values.postgresql.backup.retentionPolicy }}
+    {{- with .Values.postgresql.backup.barmanObjectStore }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .Values.postgresql.pooler.enabled }}
+  pooler:
+    instances: {{ .Values.postgresql.pooler.instances }}
+    type: {{ .Values.postgresql.pooler.type }}
+    pgbouncer:
+      poolMode: {{ .Values.postgresql.pooler.poolMode }}
+      parameters:
+        {{- toYaml .Values.postgresql.pooler.parameters | nindent 8 }}
+  {{- end }}
+
+  {{- with .Values.postgresql.affinity }}
+  affinity:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.postgresql.nodeSelector }}
+  nodeSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+
+  {{- with .Values.postgresql.tolerations }}
+  tolerations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

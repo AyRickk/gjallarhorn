@@ -1,0 +1,22 @@
+apiVersion: v2
+name: gjallarhorn
+description: A high-performance feedback collection API built with Rust
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - feedback
+  - api
+  - rust
+  - postgres
+  - metrics
+home: https://github.com/yourusername/gjallarhorn
+sources:
+  - https://github.com/yourusername/gjallarhorn
+maintainers:
+  - name: Thor
+    email: thor@example.com
+dependencies: []
+annotations:
+  category: API
+  licenses: MIT

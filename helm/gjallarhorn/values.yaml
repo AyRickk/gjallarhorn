@@ -1,0 +1,508 @@
+# Default values for Gjallarhorn
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Number of replicas (ignored if autoscaling is enabled)
+replicaCount: 3
+
+# -- Override the name of the chart
+nameOverride: ""
+# -- Override the full name of the chart
+fullnameOverride: ""
+# -- Override the namespace
+namespaceOverride: ""
+
+# -- Common labels to add to all resources
+commonLabels: {}
+
+# Namespace configuration
+namespace:
+  # -- Create the namespace
+  create: true
+  # -- Additional labels for the namespace
+  labels:
+    name: feedback-system
+  # -- Additional annotations for the namespace
+  annotations: {}
+
+# Image configuration
+image:
+  # -- Image repository
+  repository: your-registry/feedback-api
+  # -- Image pull policy
+  pullPolicy: Always
+  # -- Image tag (defaults to chart appVersion)
+  tag: ""
+  # -- Image digest (overrides tag if set)
+  digest: ""
+
+# -- Image pull secrets
+imagePullSecrets: []
+
+# Service account configuration
+serviceAccount:
+  # -- Create service account
+  create: false
+  # -- Service account name
+  name: ""
+  # -- Annotations for service account
+  annotations: {}
+
+# Application configuration
+app:
+  # -- Application host
+  host: "0.0.0.0"
+  # -- Application port
+  port: 8080
+  # -- Export max records limit
+  exportMaxRecords: 10000
+  # -- Log level (RUST_LOG)
+  logLevel: "info,feedback_api=debug"
+  # -- Extra environment variables (as key-value pairs)
+  extraEnv: {}
+  # -- Extra secret environment variables (as key-value pairs)
+  extraSecretEnv: {}
+  # -- Extra environment from sources
+  extraEnvFrom: []
+
+# Keycloak configuration
+keycloak:
+  # -- Keycloak realm
+  realm: "master"
+  # -- JWKS cache TTL in seconds
+  jwksCacheTtl: 3600
+  # -- External Keycloak URL (if not using in-cluster Keycloak)
+  externalUrl: ""
+  # -- In-cluster Keycloak service name
+  serviceName: "keycloak"
+  # -- In-cluster Keycloak namespace
+  namespace: "auth-system"
+  # -- Keycloak port
+  port: 8080
+
+# Webhooks configuration
+webhooks:
+  # -- Webhook URLs (array of URLs)
+  urls: []
+  # Example:
+  # urls:
+  #   - "http://webhook-service.feedback-system.svc.cluster.local/webhook"
+  #   - "https://external-webhook.example.com/feedback"
+
+# PostgreSQL configuration
+postgresql:
+  # -- Enable PostgreSQL CNPG cluster
+  enabled: true
+  # -- Number of PostgreSQL instances
+  instances: 3
+  # -- Primary update strategy
+  primaryUpdateStrategy: unsupervised
+  # -- PostgreSQL image (leave empty for CNPG default)
+  imageName: ""
+
+  # Authentication
+  auth:
+    # -- Database name
+    database: feedback_db
+    # -- Database username
+    username: feedback_user
+    # -- Database password (CHANGE IN PRODUCTION!)
+    password: "CHANGE_ME_IN_PRODUCTION"
+    # -- Database port
+    port: 5432
+
+  # PostgreSQL parameters
+  parameters:
+    max_connections: "200"
+    shared_buffers: "256MB"
+    effective_cache_size: "1GB"
+    maintenance_work_mem: "64MB"
+    checkpoint_completion_target: "0.9"
+    wal_buffers: "16MB"
+    default_statistics_target: "100"
+    random_page_cost: "1.1"
+    effective_io_concurrency: "200"
+    work_mem: "2621kB"
+    min_wal_size: "1GB"
+    max_wal_size: "4GB"
+
+  # Storage configuration
+  storage:
+    # -- Storage size
+    size: 10Gi
+    # -- Storage class (leave empty for default)
+    storageClass: ""
+    # -- Enable resize in use volumes
+    resizeInUseVolumes: true
+
+  # InitDB configuration
+  initdb:
+    postInitSQL: []
+    postInitApplicationSQL: []
+
+  # Resource limits for PostgreSQL pods
+  resources: {}
+  #   requests:
+  #     memory: "512Mi"
+  #     cpu: "500m"
+  #   limits:
+  #     memory: "2Gi"
+  #     cpu: "2000m"
+
+  # Monitoring configuration
+  monitoring:
+    # -- Enable pod monitor
+    enabled: true
+    enablePodMonitor: true
+    podMonitorMetricRelabelings: []
+    podMonitorRelabelings: []
+
+  # Backup configuration
+  backup:
+    # -- Enable backups
+    enabled: true
+    # -- Backup destination path
+    destinationPath: "s3://your-backup-bucket/feedback-postgres"
+    # -- Backup retention policy
+    retentionPolicy: "30d"
+    # -- WAL compression method
+    walCompression: gzip
+    # -- WAL encryption (optional)
+    walEncryption: ""
+    # -- Data compression (optional)
+    dataCompression: ""
+
+    # S3 credentials
+    s3Credentials:
+      # -- Enable S3 credentials
+      enabled: true
+      # -- Secret name containing S3 credentials
+      secretName: backup-creds
+      # -- Access key ID key in secret
+      accessKeyIdKey: ACCESS_KEY_ID
+      # -- Secret access key key in secret
+      secretAccessKeyKey: ACCESS_SECRET_KEY
+
+    # Azure credentials
+    azureCredentials:
+      # -- Enable Azure credentials
+      enabled: false
+      secretName: backup-creds
+      storageAccountKey: AZURE_STORAGE_ACCOUNT
+      storageKeyKey: AZURE_STORAGE_KEY
+
+    # Google credentials
+    googleCredentials:
+      # -- Enable Google credentials
+      enabled: false
+      secretName: backup-creds
+      applicationCredentialsKey: APPLICATION_CREDENTIALS
+
+    # -- Custom endpoint URL (for S3-compatible storage)
+    endpointURL: ""
+
+    # Additional barman object store configuration
+    barmanObjectStore: {}
+
+  # Connection pooler configuration
+  pooler:
+    # -- Enable PgBouncer pooler
+    enabled: false
+    # -- Number of pooler instances
+    instances: 3
+    # -- Pooler type
+    type: rw
+    # -- Pool mode
+    poolMode: transaction
+    # -- PgBouncer parameters
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "25"
+
+  # External database configuration (alternative to CNPG)
+  externalDatabase:
+    # -- Use external database instead of CNPG
+    enabled: false
+    # -- External database connection string
+    connectionString: ""
+
+  # Node selector for PostgreSQL pods
+  nodeSelector: {}
+  # Affinity for PostgreSQL pods
+  affinity: {}
+  # Tolerations for PostgreSQL pods
+  tolerations: []
+
+# Deployment configuration
+deployment:
+  # -- Deployment annotations
+  annotations: {}
+  # -- Deployment strategy
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+# Pod configuration
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podLabels: {}
+
+podSecurityContext: {}
+
+# Container security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+
+# Service configuration
+service:
+  # -- Service type
+  type: ClusterIP
+  # -- Service port
+  port: 8080
+  # -- Node port (for NodePort/LoadBalancer service types)
+  nodePort: ""
+  # -- Cluster IP (for ClusterIP service type)
+  clusterIP: ""
+  # -- Load balancer IP (for LoadBalancer service type)
+  loadBalancerIP: ""
+  # -- Load balancer source ranges (for LoadBalancer service type)
+  loadBalancerSourceRanges: []
+  # -- External traffic policy
+  externalTrafficPolicy: ""
+  # -- Session affinity
+  sessionAffinity: ""
+  # -- Service annotations
+  annotations: {}
+
+# Ingress configuration
+ingress:
+  # -- Enable ingress
+  enabled: true
+  # -- Ingress class name
+  className: nginx
+  # -- Ingress annotations
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  # -- Ingress hosts configuration
+  hosts:
+    - host: feedback-api.your-domain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- Ingress TLS configuration
+  tls:
+    - hosts:
+        - feedback-api.your-domain.com
+      secretName: feedback-api-tls
+
+# Resource limits and requests
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# Liveness probe configuration
+livenessProbe:
+  # -- Enable liveness probe
+  enabled: true
+  # -- Liveness probe path
+  path: /health
+  # -- Initial delay seconds
+  initialDelaySeconds: 30
+  # -- Period seconds
+  periodSeconds: 10
+  # -- Timeout seconds
+  timeoutSeconds: 5
+  # -- Failure threshold
+  failureThreshold: 3
+  # -- Success threshold
+  successThreshold: 1
+
+# Readiness probe configuration
+readinessProbe:
+  # -- Enable readiness probe
+  enabled: true
+  # -- Readiness probe path
+  path: /health
+  # -- Initial delay seconds
+  initialDelaySeconds: 10
+  # -- Period seconds
+  periodSeconds: 5
+  # -- Timeout seconds
+  timeoutSeconds: 3
+  # -- Failure threshold
+  failureThreshold: 3
+  # -- Success threshold
+  successThreshold: 1
+
+# Startup probe configuration
+startupProbe:
+  # -- Enable startup probe
+  enabled: false
+  # -- Startup probe path
+  path: /health
+  # -- Initial delay seconds
+  initialDelaySeconds: 0
+  # -- Period seconds
+  periodSeconds: 5
+  # -- Timeout seconds
+  timeoutSeconds: 3
+  # -- Failure threshold
+  failureThreshold: 30
+  # -- Success threshold
+  successThreshold: 1
+
+# Autoscaling configuration
+autoscaling:
+  # -- Enable horizontal pod autoscaler
+  enabled: true
+  # -- Minimum replicas
+  minReplicas: 3
+  # -- Maximum replicas
+  maxReplicas: 20
+  # -- Target CPU utilization percentage
+  targetCPUUtilizationPercentage: 70
+  # -- Target memory utilization percentage
+  targetMemoryUtilizationPercentage: 80
+  # -- Custom metrics
+  customMetrics: []
+  # -- HPA behavior
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 4
+        periodSeconds: 30
+      selectPolicy: Max
+
+# Metrics configuration
+metrics:
+  # -- Enable metrics collection
+  enabled: true
+  # -- Metrics service configuration
+  service:
+    # -- Metrics service annotations
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "8080"
+      prometheus.io/path: "/metrics"
+
+  # ServiceMonitor configuration (for Prometheus Operator)
+  serviceMonitor:
+    # -- Enable ServiceMonitor
+    enabled: true
+    # -- ServiceMonitor path
+    path: /metrics
+    # -- Scrape interval
+    interval: 30s
+    # -- Scrape timeout
+    scrapeTimeout: 10s
+    # -- Additional labels for ServiceMonitor
+    labels: {}
+    # -- Annotations for ServiceMonitor
+    annotations: {}
+    # -- Relabelings
+    relabelings: []
+    # -- Metric relabelings
+    metricRelabelings: []
+
+# Network policy configuration
+networkPolicy:
+  # -- Enable network policy
+  enabled: true
+
+  # Ingress rules
+  ingress:
+    # Allow traffic from ingress controller
+    fromIngressController:
+      # -- Enable ingress from ingress controller
+      enabled: true
+      # -- Namespace selector for ingress controller
+      namespaceSelector:
+        name: ingress-nginx
+
+    # Allow traffic from Prometheus
+    fromPrometheus:
+      # -- Enable ingress from Prometheus
+      enabled: true
+      # -- Namespace selector for Prometheus
+      namespaceSelector:
+        name: monitoring
+
+    # -- Custom ingress rules
+    customRules: []
+
+  # Egress rules
+  egress:
+    # -- Allow DNS queries
+    allowDNS: true
+    # -- DNS namespace selector
+    dnsNamespaceSelector:
+      name: kube-system
+
+    # -- Allow PostgreSQL connection
+    allowPostgres: true
+
+    # -- Allow Keycloak connection
+    allowKeycloak: true
+    # -- Keycloak namespace selector
+    keycloakNamespaceSelector:
+      name: auth-system
+
+    # -- Allow external HTTPS connections
+    allowExternal: true
+
+    # -- Custom egress rules
+    customRules: []
+
+# Init containers
+initContainers: []
+
+# Additional volumes
+volumes: []
+
+# Additional volume mounts
+volumeMounts: []
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}
+
+# Topology spread constraints
+topologySpreadConstraints: []

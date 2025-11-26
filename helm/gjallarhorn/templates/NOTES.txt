@@ -1,0 +1,135 @@
+
+================================================================================
+  ____  _       _ _            _
+ / ___|(_) __ _| | | __ _ _ __| |__   ___  _ __ _ __
+| |  _ | |/ _` | | |/ _` | '__| '_ \ / _ \| '__| '_ \
+| |_| || | (_| | | | (_| | |  | | | | (_) | |  | | | |
+ \____|/ |\__,_|_|_|\__,_|_|  |_| |_|\___/|_|  |_| |_|
+     |__/
+
+Gjallarhorn has been deployed successfully! 🎺
+
+================================================================================
+Release Information:
+  Name:       {{ .Release.Name }}
+  Namespace:  {{ include "gjallarhorn.namespace" . }}
+  Version:    {{ .Chart.Version }}
+  App:        {{ .Chart.AppVersion }}
+================================================================================
+
+{{- if .Values.ingress.enabled }}
+🌐 Access your API:
+{{- range .Values.ingress.hosts }}
+  https://{{ .host }}
+{{- end }}
+
+{{- else }}
+🌐 Access your API:
+
+To access the API, you can port-forward to the service:
+
+  kubectl port-forward -n {{ include "gjallarhorn.namespace" . }} svc/{{ include "gjallarhorn.fullname" . }} 8080:{{ .Values.service.port }}
+
+Then access the API at: http://localhost:8080
+{{- end }}
+
+================================================================================
+📊 Monitoring & Metrics:
+
+{{- if .Values.metrics.enabled }}
+✓ Metrics are enabled at /metrics endpoint
+{{- if .Values.metrics.serviceMonitor.enabled }}
+✓ ServiceMonitor is configured for Prometheus Operator
+{{- end }}
+{{- else }}
+✗ Metrics are disabled
+{{- end }}
+
+================================================================================
+🗄️  PostgreSQL Database:
+
+{{- if .Values.postgresql.enabled }}
+✓ PostgreSQL CNPG cluster is deployed
+  Cluster:   {{ include "gjallarhorn.postgres.name" . }}
+  Instances: {{ .Values.postgresql.instances }}
+  Database:  {{ .Values.postgresql.auth.database }}
+
+To get the connection details:
+
+  kubectl get cluster -n {{ include "gjallarhorn.namespace" . }} {{ include "gjallarhorn.postgres.name" . }}
+
+{{- if .Values.postgresql.backup.enabled }}
+✓ Automated backups are enabled
+  Retention: {{ .Values.postgresql.backup.retentionPolicy }}
+{{- end }}
+{{- else }}
+✓ Using external database
+{{- end }}
+
+================================================================================
+🔐 Security:
+
+{{- if .Values.networkPolicy.enabled }}
+✓ Network policies are enabled
+{{- else }}
+⚠  Network policies are disabled
+{{- end }}
+
+✓ Container security context is configured
+✓ Non-root user (UID: {{ .Values.securityContext.runAsUser }})
+✓ Read-only root filesystem
+
+⚠  IMPORTANT: Remember to update these secrets in production:
+  - PostgreSQL password (postgresql.auth.password)
+  - Keycloak credentials
+  - Backup credentials (if using S3/Azure/GCS)
+
+================================================================================
+⚖️  Scaling:
+
+{{- if .Values.autoscaling.enabled }}
+✓ HPA is enabled
+  Min replicas: {{ .Values.autoscaling.minReplicas }}
+  Max replicas: {{ .Values.autoscaling.maxReplicas }}
+  Target CPU:   {{ .Values.autoscaling.targetCPUUtilizationPercentage }}%
+  Target Mem:   {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}%
+{{- else }}
+✓ Fixed replica count: {{ .Values.replicaCount }}
+{{- end }}
+
+================================================================================
+📚 Useful Commands:
+
+# View deployment status
+kubectl get deployment -n {{ include "gjallarhorn.namespace" . }} {{ include "gjallarhorn.fullname" . }}
+
+# View pods
+kubectl get pods -n {{ include "gjallarhorn.namespace" . }} -l app.kubernetes.io/name={{ include "gjallarhorn.name" . }}
+
+# View logs
+kubectl logs -n {{ include "gjallarhorn.namespace" . }} -l app.kubernetes.io/name={{ include "gjallarhorn.name" . }} -f
+
+{{- if .Values.postgresql.enabled }}
+# View PostgreSQL cluster status
+kubectl get cluster -n {{ include "gjallarhorn.namespace" . }} {{ include "gjallarhorn.postgres.name" . }}
+
+# View PostgreSQL pods
+kubectl get pods -n {{ include "gjallarhorn.namespace" . }} -l cnpg.io/cluster={{ include "gjallarhorn.postgres.name" . }}
+{{- end }}
+
+# Upgrade the release
+helm upgrade {{ .Release.Name }} ./gjallarhorn -n {{ .Release.Namespace }}
+
+# Rollback to previous version
+helm rollback {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+================================================================================
+📖 Documentation:
+
+For more information, visit:
+  - Chart README: helm/gjallarhorn/README.md
+  - Repository: {{ .Chart.Home }}
+
+================================================================================
+When users speak, Gjallarhorn sounds! 🎺
+================================================================================

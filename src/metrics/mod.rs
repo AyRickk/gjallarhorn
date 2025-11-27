@@ -61,6 +61,42 @@ lazy_static! {
         &["method", "endpoint"]
     )
     .unwrap();
+
+    // Enhanced metrics for Phase 3 - Robustness & Observability
+    pub static ref VALIDATION_ERRORS: CounterVec = register_counter_vec!(
+        "feedback_validation_errors_total",
+        "Total number of validation errors",
+        &["error_type"]
+    )
+    .unwrap();
+
+    pub static ref DB_OPERATIONS: CounterVec = register_counter_vec!(
+        "feedback_db_operations_total",
+        "Total number of database operations",
+        &["operation", "status"]
+    )
+    .unwrap();
+
+    pub static ref DB_LATENCY: HistogramVec = register_histogram_vec!(
+        "feedback_db_latency_seconds",
+        "Database operation latency in seconds",
+        &["operation"]
+    )
+    .unwrap();
+
+    pub static ref WEBHOOK_DELIVERIES: CounterVec = register_counter_vec!(
+        "feedback_webhook_deliveries_total",
+        "Total number of webhook deliveries",
+        &["status"]
+    )
+    .unwrap();
+
+    pub static ref AUTH_ATTEMPTS: CounterVec = register_counter_vec!(
+        "feedback_auth_attempts_total",
+        "Total number of authentication attempts",
+        &["status"]
+    )
+    .unwrap();
 }
 
 pub fn record_feedback(service: &str, feedback_type: &str, rating: Option<i32>, thumbs_up: Option<bool>, has_comment: bool) {

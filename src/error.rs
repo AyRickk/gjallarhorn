@@ -23,36 +23,86 @@ struct ErrorResponse {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, error_message, details) = match self {
+        let (status, error_message, details, _error_type) = match &self {
             AppError::DatabaseError(err) => {
-                tracing::error!("Database error: {:?}", err);
-                // Only expose detailed errors in debug mode (development)
+                // Structured error logging with detailed context
+                tracing::error!(
+                    error_type = "database_error",
+                    error_details = ?err,
+                    status_code = %StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    "Database error occurred"
+                );
+                // Record validation error metric
+                crate::metrics::VALIDATION_ERRORS
+                    .with_label_values(&["database"])
+                    .inc();
+
                 let details = if cfg!(debug_assertions) {
                     Some(err.to_string())
                 } else {
-                    None // Hide database details in production
+                    None
                 };
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Database error occurred".to_string(),
                     details,
+                    "database_error",
                 )
             }
-            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg, None),
-            AppError::ValidationError(msg) => (StatusCode::BAD_REQUEST, msg, None),
-            AppError::AuthenticationError(msg) => (StatusCode::UNAUTHORIZED, msg, None),
+            AppError::NotFound(msg) => {
+                tracing::warn!(
+                    error_type = "not_found",
+                    message = %msg,
+                    status_code = %StatusCode::NOT_FOUND.as_u16(),
+                    "Resource not found"
+                );
+                (StatusCode::NOT_FOUND, msg.clone(), None, "not_found")
+            }
+            AppError::ValidationError(msg) => {
+                tracing::warn!(
+                    error_type = "validation_error",
+                    message = %msg,
+                    status_code = %StatusCode::BAD_REQUEST.as_u16(),
+                    "Validation failed"
+                );
+                // Record validation error metric
+                crate::metrics::VALIDATION_ERRORS
+                    .with_label_values(&["validation"])
+                    .inc();
+
+                (StatusCode::BAD_REQUEST, msg.clone(), None, "validation_error")
+            }
+            AppError::AuthenticationError(msg) => {
+                tracing::warn!(
+                    error_type = "authentication_error",
+                    message = %msg,
+                    status_code = %StatusCode::UNAUTHORIZED.as_u16(),
+                    "Authentication failed"
+                );
+                (StatusCode::UNAUTHORIZED, msg.clone(), None, "authentication_error")
+            }
             AppError::InternalError(msg) => {
-                tracing::error!("Internal error: {}", msg);
-                // Only expose detailed errors in debug mode (development)
+                tracing::error!(
+                    error_type = "internal_error",
+                    message = %msg,
+                    status_code = %StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+                    "Internal server error"
+                );
+                // Record internal error metric
+                crate::metrics::VALIDATION_ERRORS
+                    .with_label_values(&["internal"])
+                    .inc();
+
                 let details = if cfg!(debug_assertions) {
-                    Some(msg)
+                    Some(msg.clone())
                 } else {
-                    None // Hide internal error details in production
+                    None
                 };
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal server error".to_string(),
                     details,
+                    "internal_error",
                 )
             }
         };

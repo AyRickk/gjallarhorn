@@ -1,6 +1,6 @@
 use axum::{
     extract::{ConnectInfo, Request},
-    http::StatusCode,
+    http::{HeaderValue, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -9,6 +9,8 @@ use lazy_static::lazy_static;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+use crate::observability::RequestId;
 
 pub async fn metrics_middleware(req: Request, next: Next) -> Response {
     let start = Instant::now();
@@ -101,4 +103,86 @@ pub async fn auth_rate_limit_middleware(
     drop(entry);
 
     Ok(next.run(req).await)
+}
+
+/// Request logging middleware with correlation IDs
+///
+/// This middleware:
+/// - Generates a unique request ID for each request
+/// - Adds the request ID to response headers (X-Request-ID)
+/// - Logs structured request/response information
+/// - Tracks request duration
+/// - Includes client IP and user agent
+pub async fn request_logging_middleware(
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let start = Instant::now();
+    let request_id = RequestId::new();
+
+    // Extract request details
+    let method = req.method().clone();
+    let uri = req.uri().clone();
+    let path = uri.path().to_string();
+    let client_ip = addr.ip().to_string();
+    let user_agent = req
+        .headers()
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("unknown");
+
+    // Log incoming request with structured fields
+    tracing::info!(
+        request_id = %request_id,
+        method = %method,
+        path = %path,
+        client_ip = %client_ip,
+        user_agent = %user_agent,
+        "Incoming request"
+    );
+
+    // Process request
+    let mut response = next.run(req).await;
+
+    // Calculate duration
+    let duration = start.elapsed();
+    let status = response.status();
+
+    // Add request ID to response headers
+    if let Ok(header_value) = HeaderValue::from_str(&request_id.to_string()) {
+        response.headers_mut().insert("X-Request-ID", header_value);
+    }
+
+    // Log response with structured fields based on status
+    if status.is_server_error() {
+        tracing::error!(
+            request_id = %request_id,
+            method = %method,
+            path = %path,
+            status = %status.as_u16(),
+            duration_ms = duration.as_millis(),
+            "Request completed with server error"
+        );
+    } else if status.is_client_error() {
+        tracing::warn!(
+            request_id = %request_id,
+            method = %method,
+            path = %path,
+            status = %status.as_u16(),
+            duration_ms = duration.as_millis(),
+            "Request completed with client error"
+        );
+    } else {
+        tracing::info!(
+            request_id = %request_id,
+            method = %method,
+            path = %path,
+            status = %status.as_u16(),
+            duration_ms = duration.as_millis(),
+            "Request completed successfully"
+        );
+    }
+
+    response
 }

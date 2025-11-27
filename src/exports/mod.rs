@@ -59,15 +59,37 @@ pub async fn send_webhook(urls: &[String], payload: WebhookPayload) -> Result<()
     let client = reqwest::Client::new();
 
     for url in urls {
-        if let Err(e) = client
+        match client
             .post(url)
             .json(&payload)
             .send()
             .await
         {
-            tracing::error!("Failed to send webhook to {}: {}", url, e);
-        } else {
-            tracing::info!("Webhook sent successfully to {}", url);
+            Ok(_) => {
+                tracing::info!(
+                    url = %url,
+                    event = %payload.event,
+                    feedback_id = %payload.feedback.id,
+                    "Webhook delivered successfully"
+                );
+                // Record successful webhook delivery
+                crate::metrics::WEBHOOK_DELIVERIES
+                    .with_label_values(&["success"])
+                    .inc();
+            }
+            Err(e) => {
+                tracing::error!(
+                    url = %url,
+                    event = %payload.event,
+                    feedback_id = %payload.feedback.id,
+                    error = %e,
+                    "Failed to deliver webhook"
+                );
+                // Record failed webhook delivery
+                crate::metrics::WEBHOOK_DELIVERIES
+                    .with_label_values(&["failed"])
+                    .inc();
+            }
         }
     }
 

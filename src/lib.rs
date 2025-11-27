@@ -46,6 +46,7 @@ pub mod db;
 pub mod exports;
 pub mod metrics;
 pub mod middleware;
+pub mod observability;
 pub mod repositories;
 
 // Presentation Layer

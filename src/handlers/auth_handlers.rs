@@ -50,6 +50,11 @@ pub async fn login(
         .map_err(|e| crate::error::AppError::InternalError(format!("Failed to connect to Keycloak: {}", e)))?;
 
     if !response.status().is_success() {
+        // Record failed authentication attempt
+        crate::metrics::AUTH_ATTEMPTS
+            .with_label_values(&["failed"])
+            .inc();
+
         return Err(crate::error::AppError::AuthenticationError(
             "Invalid credentials".to_string(),
         ));
@@ -71,6 +76,11 @@ pub async fn login(
             .to_string(),
         expires_in: token_data["expires_in"].as_u64().unwrap_or(60),
     };
+
+    // Record successful authentication
+    crate::metrics::AUTH_ATTEMPTS
+        .with_label_values(&["success"])
+        .inc();
 
     Ok((StatusCode::OK, Json(login_response)).into_response())
 }

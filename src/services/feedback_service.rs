@@ -32,6 +32,15 @@ impl FeedbackService {
         user_email: Option<&str>,
         submission: FeedbackSubmission,
     ) -> Result<Feedback> {
+        // Log with structured context
+        tracing::debug!(
+            user_id = %user_id,
+            service = %submission.service,
+            feedback_type = ?submission.feedback_type,
+            has_comment = submission.comment.is_some(),
+            "Creating feedback"
+        );
+
         // 1. Validate input according to business rules
         self.validate_feedback_submission(&submission)?;
 
@@ -40,6 +49,15 @@ impl FeedbackService {
             .repository
             .create(user_id, user_email, submission.clone())
             .await?;
+
+        // Log successful creation with feedback ID
+        tracing::info!(
+            feedback_id = %feedback.id,
+            user_id = %user_id,
+            service = %feedback.service,
+            feedback_type = ?feedback.feedback_type,
+            "Feedback created successfully"
+        );
 
         // 3. Record metrics asynchronously (fire and forget)
         self.record_feedback_metrics(&submission);

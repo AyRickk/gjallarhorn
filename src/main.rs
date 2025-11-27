@@ -18,18 +18,11 @@ use std::time::Duration;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "info,feedback_api=debug".into()),
-        )
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Initialize structured logging
+    feedback_api::observability::init_logging()?;
 
     // Load configuration
     let config = Config::from_env()?;
@@ -119,6 +112,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .nest("/api/v1", protected_routes)
         .merge(public_routes)
+        .layer(axum::middleware::from_fn(feedback_api::middleware::request_logging_middleware))
         .layer(axum::middleware::from_fn(feedback_api::middleware::metrics_middleware))
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB max request size
         .layer(cors)

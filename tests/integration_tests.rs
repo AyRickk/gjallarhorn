@@ -1,7 +1,10 @@
+use feedback_api::config::Config;
 use feedback_api::db::Database;
 use feedback_api::models::{FeedbackSubmission, FeedbackType};
+use feedback_api::repositories::PostgresFeedbackRepository;
 use feedback_api::services::FeedbackService;
 use std::env;
+use std::sync::Arc;
 
 #[tokio::test]
 #[ignore] // Requires database to be running
@@ -11,7 +14,22 @@ async fn test_create_and_retrieve_feedback() {
         .unwrap_or_else(|_| "postgres://feedback:feedback@localhost:5432/feedback".to_string());
 
     let db = Database::new(&database_url).await.expect("Failed to connect to database");
-    let service = FeedbackService::new(db);
+    let repository = Arc::new(PostgresFeedbackRepository::new(db));
+    let config = Arc::new(Config::from_env().unwrap_or_else(|_| {
+        // Use default test config if env vars not set
+        Config {
+            database_url: database_url.clone(),
+            host: "0.0.0.0".to_string(),
+            port: 8080,
+            keycloak_url: "http://localhost:8180/realms/master".to_string(),
+            keycloak_realm: "master".to_string(),
+            keycloak_jwks_cache_ttl: 300,
+            webhook_urls: vec![],
+            allowed_origins: vec![],
+            export_max_records: 10000,
+        }
+    }));
+    let service = FeedbackService::new(repository, config);
 
     // Create feedback
     let submission = FeedbackSubmission {
@@ -48,7 +66,21 @@ async fn test_query_feedbacks() {
         .unwrap_or_else(|_| "postgres://feedback:feedback@localhost:5432/feedback".to_string());
 
     let db = Database::new(&database_url).await.expect("Failed to connect to database");
-    let service = FeedbackService::new(db);
+    let repository = Arc::new(PostgresFeedbackRepository::new(db));
+    let config = Arc::new(Config::from_env().unwrap_or_else(|_| {
+        Config {
+            database_url: database_url.clone(),
+            host: "0.0.0.0".to_string(),
+            port: 8080,
+            keycloak_url: "http://localhost:8180/realms/master".to_string(),
+            keycloak_realm: "master".to_string(),
+            keycloak_jwks_cache_ttl: 300,
+            webhook_urls: vec![],
+            allowed_origins: vec![],
+            export_max_records: 10000,
+        }
+    }));
+    let service = FeedbackService::new(repository, config);
 
     // Query all feedbacks
     let feedbacks = service
@@ -74,7 +106,21 @@ async fn test_get_stats() {
         .unwrap_or_else(|_| "postgres://feedback:feedback@localhost:5432/feedback".to_string());
 
     let db = Database::new(&database_url).await.expect("Failed to connect to database");
-    let service = FeedbackService::new(db);
+    let repository = Arc::new(PostgresFeedbackRepository::new(db));
+    let config = Arc::new(Config::from_env().unwrap_or_else(|_| {
+        Config {
+            database_url: database_url.clone(),
+            host: "0.0.0.0".to_string(),
+            port: 8080,
+            keycloak_url: "http://localhost:8180/realms/master".to_string(),
+            keycloak_realm: "master".to_string(),
+            keycloak_jwks_cache_ttl: 300,
+            webhook_urls: vec![],
+            allowed_origins: vec![],
+            export_max_records: 10000,
+        }
+    }));
+    let service = FeedbackService::new(repository, config);
 
     // Get stats for all services
     let stats = service

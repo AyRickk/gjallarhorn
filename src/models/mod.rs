@@ -92,7 +92,7 @@ pub struct MetricsAggregate {
     pub service: String,
     pub feedback_type: FeedbackType,
     pub total_count: i64,
-    pub rating_sum: Option<f64>,
+    pub rating_sum: Option<i64>,
     pub thumbs_up_count: i64,
     pub thumbs_down_count: i64,
     pub comment_count: i64,

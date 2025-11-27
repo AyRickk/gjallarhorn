@@ -5,6 +5,7 @@ use feedback_api::handlers::{
     create_feedback, export_feedbacks, get_feedback, get_stats, health_check, login,
     metrics_handler, query_feedbacks, AppState,
 };
+use feedback_api::repositories::PostgresFeedbackRepository;
 use feedback_api::services::FeedbackService;
 use axum::{
     http::{header::{AUTHORIZATION, CONTENT_TYPE}, HeaderValue, Method},
@@ -42,8 +43,11 @@ async fn main() -> anyhow::Result<()> {
     db.run_migrations().await?;
     tracing::info!("Database migrations completed");
 
-    // Initialize metrics from database
-    feedback_api::metrics::initialize_metrics_from_db(&db).await?;
+    // Create repository layer
+    let repository = Arc::new(PostgresFeedbackRepository::new(db));
+
+    // Initialize metrics from database via repository
+    feedback_api::metrics::initialize_metrics_from_db(repository.as_ref()).await?;
     tracing::info!("Metrics initialized from database");
 
     // Create auth state
@@ -53,13 +57,16 @@ async fn main() -> anyhow::Result<()> {
         config.keycloak_jwks_cache_ttl,
     );
 
-    // Create service layer
-    let feedback_service = Arc::new(FeedbackService::new(db));
+    // Create app state configuration
+    let config_arc = Arc::new(config.clone());
+
+    // Create service layer with repository and config
+    let feedback_service = Arc::new(FeedbackService::new(repository, config_arc.clone()));
 
     // Create app state
     let app_state = AppState {
         service: feedback_service,
-        config: Arc::new(config.clone()),
+        config: config_arc,
     };
 
     // Build protected routes (require authentication + rate limiting)

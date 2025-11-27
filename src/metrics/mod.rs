@@ -101,9 +101,9 @@ pub fn gather_metrics() -> Result<String, Box<dyn std::error::Error>> {
     Ok(String::from_utf8(buffer)?)
 }
 
-pub async fn initialize_metrics_from_db(db: &crate::db::Database) -> anyhow::Result<()> {
-    // Fetch aggregated metrics from database instead of loading all feedbacks
-    let aggregates = db.get_metrics_aggregates().await?;
+pub async fn initialize_metrics_from_db(repository: &dyn crate::repositories::FeedbackRepository) -> anyhow::Result<()> {
+    // Fetch aggregated metrics from database via repository
+    let aggregates = repository.get_metrics_aggregates().await?;
 
     let aggregate_count = aggregates.len();
     let mut total_feedbacks = 0i64;
@@ -121,7 +121,7 @@ pub async fn initialize_metrics_from_db(db: &crate::db::Database) -> anyhow::Res
         // Note: We can't restore exact individual ratings, but we can observe the average
         if let Some(rating_sum) = agg.rating_sum {
             if agg.total_count > 0 {
-                let avg_rating = rating_sum / agg.total_count as f64;
+                let avg_rating = rating_sum as f64 / agg.total_count as f64;
                 // Observe the average rating for each count
                 // This approximates the distribution
                 for _ in 0..agg.total_count {
